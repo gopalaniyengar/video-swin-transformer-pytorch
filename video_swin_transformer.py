@@ -776,7 +776,17 @@ class SwinT_Kinetics(nn.Module):
                           patch_norm=True)
 
         self.head = I3DHead(num_classes=400, in_channels=768)
-    
+        
+        '''
+        checkpoint = torch.load('./checkpoints/swin_tiny_patch244_window877_kinetics400_1k.pth')
+        new_state_dict = OrderedDict()
+        for k, v in checkpoint['state_dict'].items():
+            if 'backbone' in k:
+                name = k[9:]
+                new_state_dict[name] = v 
+        self.backbone.load_state_dict(new_state_dict) 
+        '''
+
     def forward(self, input_video):
         features = self.backbone(input_video)
         logits = self.head(features)
@@ -784,7 +794,8 @@ class SwinT_Kinetics(nn.Module):
 
 if __name__=='__main__':
     from torchinfo import summary
-    
+    from collections import OrderedDict
+  
     '''
     swint_backbone = SwinTransformer3D(embed_dim=96, 
                           depths=[2, 2, 6, 2], 
@@ -799,9 +810,30 @@ if __name__=='__main__':
     '''
     
     swint_classifier = SwinT_Kinetics()
+    # print(swint_classifier.backbone)
+    # print(swint_classifier.head)
+
+    checkpoint = torch.load('./checkpoints/swin_tiny_patch244_window877_kinetics400_1k.pth')
+    new_state_dict_backbone = OrderedDict()
+    new_state_dict_head = OrderedDict()
+    for k, v in checkpoint['state_dict'].items():
+        if 'backbone' in k:
+            name = k[9:]
+            new_state_dict_backbone[name] = v
+        if 'cls_head' in k:
+            name = k[9:]
+            new_state_dict_head[name] = v
+    swint_classifier.backbone.load_state_dict(new_state_dict_backbone)
+    print('done loading backbone weights')
+    swint_classifier.head.load_state_dict(new_state_dict_head)
+    print('done loading head weights')
+
+    '''
     dummy = torch.rand(1, 3, 32, 224, 224)
     print(dummy.shape)
     preds = swint_classifier(dummy)
     print(preds.shape)
     summary(swint_classifier, input_data=dummy, col_names=["input_size", "output_size", "num_params"])#, "kernel_size", "mult_adds"])))
+    '''
+    print()
 
